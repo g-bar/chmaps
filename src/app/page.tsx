@@ -1,113 +1,106 @@
-import Image from "next/image";
+'use client'
+
+import * as maptilersdk from '@maptiler/sdk'
+import '@maptiler/sdk/dist/maptiler-sdk.css'
+import './map.css'
+import { useRef, useState, useEffect } from 'react'
+import { getLayers, parseCapabilities } from './utils'
 
 export default function Home() {
+  const mapContainer = useRef(null)
+  const mapReady = useRef(false)
+  const map = useRef<maptilersdk.Map | null>(null)
+  const ch = { lng: 8.25, lat: 46.8 }
+  const [zoom] = useState(7.6)
+  maptilersdk.config.apiKey = 'ANaMDm2d62iD6oFgxeie'
+  const [selectedLayers, setSelectedLayers] = useState<{ [layer: string]: boolean }>({})
+
+  console.log(selectedLayers)
+
+  useEffect(() => {
+    async function fetchLayers() {
+      const r = await fetch('https://wms.geo.admin.ch/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities')
+      const xml = await parseCapabilities(r.body)
+      const layers = getLayers(xml)
+      setSelectedLayers(
+        layers.reduce((prev, current) => {
+          prev[current] = false
+          return prev
+        }, {} as { [layer: string]: boolean })
+      )
+    }
+
+    ["ch.agroscope.feuchtflaechenpotential-kulturlandschaft"]
+
+    fetchLayers()
+  }, [])
+
+  useEffect(() => {
+    if (!mapContainer.current) return // stops map from intializing more than once
+
+    if (!map.current) {
+      map.current = new maptilersdk.Map({
+        container: mapContainer.current,
+        style: maptilersdk.MapStyle.BASIC,
+        center: [ch.lng, ch.lat],
+        zoom: zoom
+      })
+
+      map.current.on('load', function () {
+        if (!map.current) return
+        map.current.addSource('wms-test-source', {
+          type: 'raster',
+          // use the tiles option to specify a WMS tile source URL
+          // https://docs.maptiler.com/gl-style-specification/sources/
+          tiles: [
+            //'https://img.nj.gov/imagerywms/Natural2015?bbox={bbox-epsg-3857}&format=image/png&service=WMS&version=1.1.1&request=GetMap&srs=EPSG:3857&transparent=true&width=256&height=256&layers=Natural2015',
+            'https://wms.geo.admin.ch/?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=ch.swisstopo.digitales-hoehenmodell_25_reliefschattierung,ch.bafu.bundesinventare-bln&STYLES=default&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&FORMAT=image/png&width=1024&height=1024'
+          ]
+        })
+
+        
+        mapReady.current = true
+      })
+    }
+
+    function renderLayers() {
+      if (!map.current) return
+
+      for (const [layer, show] of Object.entries(selectedLayers)) {
+        if (!show) {
+          if (map.current.getLayer(layer)) map.current.removeLayer(layer)
+        } else if (!map.current.getLayer(layer))
+          map.current.addLayer({
+            id: layer,
+            type: 'raster',
+            source: 'wms-test-source'
+          })
+      }
+    }
+
+    if (mapReady.current) renderLayers()
+    else window.setTimeout(renderLayers, 1000)
+  }, [ch.lng, ch.lat, zoom, selectedLayers])
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
+    <div className="map-wrap">
+      <div className="side">
+        <span className="head">Layers</span>
+        <div className="layers">
+          <label className="label">
+            <input
+              type="checkbox"
+              value="ch.bafu.bundesinventare-bln"
+              onChange={e => {
+                const v = e.currentTarget.value
+                setSelectedLayers({ ...selectedLayers, [v]: !selectedLayers[v] })
+              }}
             />
-          </a>
+            <span className="layer">Layer 1</span>
+          </label>
         </div>
       </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  );
+      <div ref={mapContainer} className="map" />
+    </div>
+  )
 }
