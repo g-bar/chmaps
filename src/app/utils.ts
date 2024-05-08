@@ -1,4 +1,5 @@
 import { XMLParser } from 'fast-xml-parser'
+
 export async function parseCapabilities(stream: ReadableStream<Uint8Array> | null) {
   if (!stream) return
 
