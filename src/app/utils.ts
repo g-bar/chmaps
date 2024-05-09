@@ -29,7 +29,5 @@ export function getLayers(xml: { WMS_Capabilities: { Capability: { Layer: { Laye
     return CRS.includes('EPSG:3857')
   })
 
-  console.log(webMercatorLayers)
-
   return webMercatorLayers
 }
