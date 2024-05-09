@@ -19,7 +19,8 @@ export async function parseCapabilities(stream: ReadableStream<Uint8Array> | nul
   return xml
 }
 
-type Layer = { Name: string; CRS?: string[]; Layer?: Layer }
+export type Layer = { Name: string; CRS?: string[]; Layer?: Layer; Title: string }
+export type DisplayedLayer = Layer & { display: boolean }
 
 export function getLayers(xml: { WMS_Capabilities: { Capability: { Layer: { Layer: Layer[] } } } }) {
   const webMercatorLayers = xml.WMS_Capabilities.Capability.Layer.Layer.filter(l => {
@@ -28,5 +29,7 @@ export function getLayers(xml: { WMS_Capabilities: { Capability: { Layer: { Laye
     return CRS.includes('EPSG:3857')
   })
 
-  return webMercatorLayers.map(l => l.Name)
+  console.log(webMercatorLayers)
+
+  return webMercatorLayers
 }

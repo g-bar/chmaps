@@ -4,7 +4,7 @@ import * as maptilersdk from '@maptiler/sdk'
 import '@maptiler/sdk/dist/maptiler-sdk.css'
 import './map.css'
 import { useRef, useState, useEffect, useMemo } from 'react'
-import { getLayers, parseCapabilities } from './utils'
+import { DisplayedLayer, getLayers, parseCapabilities } from './utils'
 
 export default function Home() {
   const mapContainer = useRef(null)
@@ -13,7 +13,7 @@ export default function Home() {
   const ch = { lng: 8.25, lat: 46.8 }
   const [zoom] = useState(7.6)
   maptilersdk.config.apiKey = 'ANaMDm2d62iD6oFgxeie'
-  const [selectedLayers, setSelectedLayers] = useState<{ [layer: string]: boolean }>({})
+  const [selectedLayers, setSelectedLayers] = useState<{ [layer: string]: DisplayedLayer }>({})
 
   useEffect(() => {
     if (!mapContainer.current) return // stops map from intializing more than once
@@ -30,16 +30,16 @@ export default function Home() {
         if (!map.current) return
         const layers = await fetchLayers()
 
-        const selectedLayers: { [layer: string]: boolean } = {}
+        const selectedLayers: { [layer: string]: DisplayedLayer } = {}
 
         for (const layer of layers) {
-          map.current.addSource(layer, {
+          map.current.addSource(layer.Name, {
             type: 'raster',
             tiles: [
-              `https://wms.geo.admin.ch/?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=${layer}&STYLES=default&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&FORMAT=image/png&width=1024&height=1024`
+              `https://wms.geo.admin.ch/?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0&LAYERS=${layer.Name}&STYLES=default&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&FORMAT=image/png&width=1024&height=1024`
             ]
           })
-          selectedLayers[layer] = false
+          selectedLayers[layer.Name] = { ...layer, display: false }
         }
         setSelectedLayers(selectedLayers)
         mapReady.current = true
@@ -49,9 +49,9 @@ export default function Home() {
     function renderLayers() {
       if (!map.current) return
 
-      for (const [layer, show] of Object.entries(selectedLayers)) {
-        if (!show && map.current.getLayer(layer)) map.current.removeLayer(layer)
-        else if (show && !map.current.getLayer(layer))
+      for (const [layer, { display }] of Object.entries(selectedLayers)) {
+        if (!display && map.current.getLayer(layer)) map.current.removeLayer(layer)
+        else if (display && !map.current.getLayer(layer))
           map.current.addLayer({
             id: layer,
             type: 'raster',
@@ -71,17 +71,20 @@ export default function Home() {
           <>
             <span className="head">Layers</span>
             <div className="layers">
-              {Object.keys(selectedLayers).map(l => (
-                <label key={l} className="label">
+              {Object.values(selectedLayers).map(l => (
+                <label key={l.Name} className="label">
                   <input
                     type="checkbox"
-                    value={l}
+                    value={l.Name}
                     onChange={e => {
                       const v = e.currentTarget.value
-                      setSelectedLayers({ ...selectedLayers, [v]: !selectedLayers[v] })
+                      setSelectedLayers({
+                        ...selectedLayers,
+                        [v]: { ...selectedLayers[v], display: !selectedLayers[v].display }
+                      })
                     }}
                   />
-                  <span className="layer">{l}</span>
+                  <span className="layer">{l.Title}</span>
                 </label>
               ))}
             </div>
