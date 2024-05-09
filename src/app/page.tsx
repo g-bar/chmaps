@@ -1,6 +1,6 @@
 'use client'
 
-import maptilersdk from './maptiler'
+import * as maptilersdk from '@maptiler/sdk'
 import '@maptiler/sdk/dist/maptiler-sdk.css'
 import './map.css'
 import { useRef, useState, useEffect, useMemo } from 'react'
@@ -12,6 +12,8 @@ export default function Home() {
   const map = useRef<maptilersdk.Map | null>(null)
   const ch = { lng: 8.25, lat: 46.8 }
   const [zoom] = useState(7.6)
+
+  maptilersdk.config.apiKey = 'H9I34HttBvZgPmCfsh9x'
   const [selectedLayers, setSelectedLayers] = useState<DisplayedLayer[]>([])
   const [clicked, setClicked] = useState<maptilersdk.MapMouseEvent>()
   const layers = useMemo(() => selectedLayers.filter(l => l.display).map(l => l.Name), [selectedLayers])
