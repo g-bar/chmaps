@@ -4,7 +4,7 @@ import * as maptilersdk from '@maptiler/sdk'
 import '@maptiler/sdk/dist/maptiler-sdk.css'
 import './map.css'
 import { useRef, useState, useEffect, useMemo, SyntheticEvent } from 'react'
-import { DisplayedLayer, getLayers, parseCapabilities } from './utils'
+import { DisplayedLayer, getLayers, latLngToEpsg3857, parseCapabilities } from './utils'
 
 export default function Home() {
   const mapContainer = useRef(null)
@@ -15,17 +15,48 @@ export default function Home() {
   maptilersdk.config.apiKey = 'ANaMDm2d62iD6oFgxeie'
   const [selectedLayers, setSelectedLayers] = useState<DisplayedLayer[]>([])
   const [clicked, setClicked] = useState<maptilersdk.MapMouseEvent>()
-  const setClickedRef = useRef(false)
+  const layers = useMemo(() => selectedLayers.filter(l => l.display).map(l => l.Name), [selectedLayers])
   const legend = useMemo(() => {
-    const layers = selectedLayers.filter(l => l.display).map(l => l.Name)
     return `https://wms.geo.admin.ch/?SERVICE=WMS&REQUEST=GetLegendGraphic&VERSION=1.3.0&LAYERS=${layers.join(
       ','
     )}&STYLES=default&CRS=EPSG:3857`
-  }, [selectedLayers])
+  }, [layers])
   const nLayers = useMemo(() => selectedLayers.filter(l => l.display).length, [selectedLayers])
+  const [features, setFeatures] = useState<{ [k: string]: string }>()
 
   const y = clicked && clicked.point.y - 100
   const top = y && y < 0 ? y + 100 : y
+
+  console.log(features)
+
+  useEffect(() => {
+    async function fetchPointInfo() {
+      if (!layers.length || !map.current || !clicked) return
+
+      const bounds = map.current.getBounds()
+      const sw = latLngToEpsg3857(bounds._sw.lng, bounds._sw.lat)
+      const ne = latLngToEpsg3857(bounds._ne.lng, bounds._ne.lat)
+      const bbox = [sw[0], sw[1], ne[0], ne[1]]
+      const res = await fetch(
+        `https://wms.geo.admin.ch/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&LAYERS=${layers.join(
+          ','
+        )}&QUERY_LAYERS=${layers.join(',')}&FEATURE_COUNT=1&INFO_FORMAT=application/json&I=${Math.floor(
+          (clicked.point.x / window.innerWidth) * 100
+        )}&J=${Math.floor(
+          (clicked.point.y / window.innerHeight) * 100
+        )}&CRS=EPSG:3857&STYLES=&WIDTH=101&HEIGHT=101&BBOX=${bbox.join(',')}`
+      )
+      try {
+        const json = await res.json()
+        const feat: { properties: { [key: string]: string } }[] = json.features
+        if (feat.length === 0) setFeatures(undefined)
+        else setFeatures(feat[0].properties)
+      } catch (e) {
+        setFeatures(undefined)
+      }
+    }
+    fetchPointInfo()
+  }, [clicked, layers])
 
   useEffect(() => {
     if (!mapContainer.current) return
@@ -73,13 +104,8 @@ export default function Home() {
     })
 
     map.current.on('click', e => {
-      if (setClickedRef.current) {
-        setClickedRef.current = false
-        setClicked(undefined)
-      } else {
-        setClickedRef.current = true
-        setClicked(e)
-      }
+      setFeatures(undefined)
+      setClicked(e)
     })
   }, [ch.lng, ch.lat, zoom, selectedLayers])
 
@@ -121,21 +147,17 @@ export default function Home() {
         }}
       />
 
-      {clicked && (
+      {features && clicked && (
         <div
-          className="absolute bg-black opacity-50 rounded"
-          style={{ left: clicked.point.x, top, width: 200, height: 100, zIndex: 1 }}
+          className="absolute bg-black opacity-50 rounded text-white"
+          style={{ left: clicked.point.x, top, width: 200, height: 100, zIndex: 1, overflow: 'scroll' }}
         >
-          <div
-            className="cursor-pointer text-white absolute"
-            style={{ right: 10, top: 5 }}
-            onClick={() => {
-              setClickedRef.current = false
-              setClicked(undefined)
-            }}
-          >
+          <div className="cursor-pointer  absolute" style={{ right: 10, top: 5 }} onClick={() => setClicked(undefined)}>
             X
           </div>
+          {Object.entries(features).map(([k, v], i) => (
+            <div key={i}>{`${k}: ${v}`}</div>
+          ))}
         </div>
       )}
 

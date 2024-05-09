@@ -31,3 +31,9 @@ export function getLayers(xml: { WMS_Capabilities: { Capability: { Layer: { Laye
 
   return webMercatorLayers
 }
+
+export function latLngToEpsg3857(lng: number, lat: number): [number, number] {
+  const x = (lng * 20037508.34) / 180
+  const y = (Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) * 20037508.34) / Math.PI
+  return [x, y]
+}
