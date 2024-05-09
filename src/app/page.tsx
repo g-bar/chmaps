@@ -1,6 +1,6 @@
 'use client'
 
-import * as maptilersdk from '@maptiler/sdk'
+import maptilersdk from './maptiler'
 import '@maptiler/sdk/dist/maptiler-sdk.css'
 import './map.css'
 import { useRef, useState, useEffect, useMemo } from 'react'
@@ -12,8 +12,6 @@ export default function Home() {
   const map = useRef<maptilersdk.Map | null>(null)
   const ch = { lng: 8.25, lat: 46.8 }
   const [zoom] = useState(7.6)
-  if (!process.env.NEXT_PUBLIC_MAP_TILER_API_KEY) throw new Error('API_key missing')
-  maptilersdk.config.apiKey = process.env.NEXT_PUBLIC_MAP_TILER_API_KEY
   const [selectedLayers, setSelectedLayers] = useState<DisplayedLayer[]>([])
   const [clicked, setClicked] = useState<maptilersdk.MapMouseEvent>()
   const layers = useMemo(() => selectedLayers.filter(l => l.display).map(l => l.Name), [selectedLayers])
