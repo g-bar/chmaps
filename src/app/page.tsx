@@ -3,7 +3,7 @@
 import * as maptilersdk from '@maptiler/sdk'
 import '@maptiler/sdk/dist/maptiler-sdk.css'
 import './map.css'
-import { useRef, useState, useEffect, useMemo, SyntheticEvent } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { DisplayedLayer, getLayers, latLngToEpsg3857, parseCapabilities } from './utils'
 
 export default function Home() {
@@ -12,7 +12,8 @@ export default function Home() {
   const map = useRef<maptilersdk.Map | null>(null)
   const ch = { lng: 8.25, lat: 46.8 }
   const [zoom] = useState(7.6)
-  maptilersdk.config.apiKey = 'ANaMDm2d62iD6oFgxeie'
+  if (!process.env.MAP_TILER_API_KEY) throw new Error('API_key missing')
+  maptilersdk.config.apiKey = process.env.MAP_TILER_API_KEY
   const [selectedLayers, setSelectedLayers] = useState<DisplayedLayer[]>([])
   const [clicked, setClicked] = useState<maptilersdk.MapMouseEvent>()
   const layers = useMemo(() => selectedLayers.filter(l => l.display).map(l => l.Name), [selectedLayers])
@@ -26,8 +27,6 @@ export default function Home() {
 
   const y = clicked && clicked.point.y - 100
   const top = y && y < 0 ? y + 100 : y
-
-  console.log(features)
 
   useEffect(() => {
     async function fetchPointInfo() {
