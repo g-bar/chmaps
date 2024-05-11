@@ -13,7 +13,11 @@ export default function Home() {
   const ch = { lng: 8.25, lat: 46.8 }
   const [zoom] = useState(7.6)
 
-  maptilersdk.config.apiKey = 'H9I34HttBvZgPmCfsh9x'
+  maptilersdk.config.apiKey =
+    process.env.NODE_ENV === 'production' ? 'H9I34HttBvZgPmCfsh9x' : process.env.NEXT_PUBLIC_MAP_TILER ?? ''
+
+  if (!maptilersdk.config.apiKey) throw new Error('Missing API key')
+
   const [selectedLayers, setSelectedLayers] = useState<DisplayedLayer[]>([])
   const [clicked, setClicked] = useState<maptilersdk.MapMouseEvent>()
   const layers = useMemo(() => selectedLayers.filter(l => l.display).map(l => l.Name), [selectedLayers])
@@ -125,6 +129,7 @@ export default function Home() {
                       const newSelectedLayers = [...selectedLayers]
                       newSelectedLayers[i] = { ...selectedLayers[i], display: !selectedLayers[i].display }
                       setSelectedLayers(newSelectedLayers)
+                      setClicked(undefined)
                     }}
                   />
                   <span className="layer">{l.Title}</span>
